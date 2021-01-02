@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: pull-rate-limit-exporter
+  namespace: monitoring
+  labels:
+    app: pull-rate-limit-exporter
+spec:
+  selector:
+    matchLabels:
+      app: pull-rate-limit-exporter
+  template:
+    metadata:
+      labels:
+        app: pull-rate-limit-exporter
+    spec:
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+      containers:
+      - name: pull-rate-limit-exporter
+        image: deinstapel/pull-rate-limit-exporter:0.1.1
+        resources:
+          limits:
+            cpu: 100m
+            memory: 50Mi
+          requests:
+            cpu: 50m
+            memory: 20Mi
+        ports:
+        - name: metrics
+          containerPort: 2342
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: pull-rate-limit-exporter
+  name: pull-rate-limit-exporter
+  namespace: monitoring
+spec:
+  ports:
+    - name: metrics
+      port: 2342
+      protocol: TCP
+      targetPort: 2342
+  selector:
+    app: pull-rate-limit-exporter
+
+---
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: pull-rate-limit-exporter-exporter
+  namespace: monitoring
+spec:
+  endpoints:
+  - port: metrics
+    relabelings:
+      - action: replace
+        sourceLabels:
+          - __meta_kubernetes_pod_node_name
+        targetLabel: instance
+  selector:
+    matchLabels:
+      app: pull-rate-limit-exporter
+
+
+
+
+
