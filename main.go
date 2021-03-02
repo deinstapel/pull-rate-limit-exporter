@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"os/signal"
 	"strconv"
@@ -37,7 +38,7 @@ func checkingRateLimit() {
 	r, err := http.Get("https://auth.docker.io/token?service=registry.docker.io&scope=repository:ratelimitpreview/test:pull")
 
 	if err != nil {
-		log.Fatal("Could not get token")
+		log.Print("Could not get token")
 		return
 	}
 
@@ -45,13 +46,13 @@ func checkingRateLimit() {
 	err = json.NewDecoder(r.Body).Decode(&token)
 
 	if err != nil {
-		log.Fatal("Could not decode JSON from token request")
+		log.Print("Could not decode JSON from token request")
 		return
 	}
 
 	req, err := http.NewRequest("HEAD", "https://registry-1.docker.io/v2/ratelimitpreview/test/manifests/latest", nil)
 	if err != nil {
-		log.Fatal("Could not create rate limit request")
+		log.Print("Could not create rate limit request")
 		return
 	}
 
@@ -61,7 +62,7 @@ func checkingRateLimit() {
 	resp, err := client.Do(req)
 
 	if err != nil {
-		log.Fatal("Could not get rate limit request")
+		log.Print("Could not get rate limit request")
 		return
 	}
 
@@ -69,7 +70,10 @@ func checkingRateLimit() {
 	remaining, err := strconv.ParseFloat(strings.Split(resp.Header.Get("RateLimit-Remaining"), ";")[0], 64)
 
 	if err != nil {
-		log.Fatal("Could not parse RateLimit headers")
+		// Save a copy of this request for debugging.
+		requestDump, _ := httputil.DumpResponse(resp, true)
+		log.Print("Could not parse RateLimit headers")
+		log.Print(string(requestDump))
 		return
 	}
 
